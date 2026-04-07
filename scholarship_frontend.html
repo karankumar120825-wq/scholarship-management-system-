@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ScholarTrack — Scholarship Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --card: #1e2333;
+    --border: #2a2f42;
+    --gold: #f5c842;
+    --gold-soft: #f5c84222;
+    --teal: #38c9b0;
+    --teal-soft: #38c9b015;
+    --red: #ff5c5c;
+    --red-soft: #ff5c5c18;
+    --green: #4cdb8a;
+    --green-soft: #4cdb8a18;
+    --blue: #5b8cff;
+    --blue-soft: #5b8cff15;
+    --text: #e8eaf2;
+    --muted: #7a82a0;
+    --radius: 14px;
+    --shadow: 0 4px 32px #0008;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, #f5c84212 0%, transparent 60%),
+      radial-gradient(ellipse 50% 35% at 10% 80%, #38c9b010 0%, transparent 55%);
+    pointer-events: none;
+  }
+ 
+  .app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+  
+  .sidebar {
+    width: 240px; min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    transition: transform .3s;
+  }
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    color: var(--gold);
+    letter-spacing: .02em;
+  }
+  .sidebar-logo p { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+  .sidebar-role {
+    margin: 14px 16px 4px;
+    font-size: .7rem; font-weight: 600;
+    color: var(--muted); letter-spacing: .1em; text-transform: uppercase;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 20px; margin: 2px 10px;
+    border-radius: 10px; cursor: pointer;
+    font-size: .88rem; font-weight: 500; color: var(--muted);
+    transition: all .2s;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: var(--gold-soft); color: var(--gold); }
+  .nav-item .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+  .sidebar-bottom {
+    margin-top: auto; padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .user-chip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border-radius: 10px; padding: 10px 12px;
+  }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--teal));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem; color: #111;
+  }
+  .user-info p { font-size: .83rem; font-weight: 600; }
+  .user-info span { font-size: .7rem; color: var(--muted); }
+  .logout-btn {
+    width: 100%; margin-top: 8px; padding: 8px;
+    background: var(--red-soft); border: 1px solid var(--red);
+    color: var(--red); border-radius: 8px; cursor: pointer;
+    font-size: .8rem; font-weight: 600; transition: all .2s;
+  }
+  .logout-btn:hover { background: var(--red); color: #fff; }
+  /* ── MAIN ── */
+  .main { margin-left: 240px; flex: 1; padding: 32px; }
+  /* ── PAGE ── */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  /* ── HEADER ── */
+  .page-header { margin-bottom: 28px; }
+  .page-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem; color: var(--text);
+  }
+  .page-header p { color: var(--muted); font-size: .88rem; margin-top: 4px; }
+  /* ── STAT CARDS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    transition: transform .2s;
+  }
+  .stat-card:hover { transform: translateY(-3px); }
+  .stat-card .label { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; margin-top: 6px; }
+  .stat-card.gold .value { color: var(--gold); }
+  .stat-card.teal .value { color: var(--teal); }
+  .stat-card.green .value { color: var(--green); }
+  .stat-card.red .value { color: var(--red); }
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .table-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+  }
+  .table-head h3 { font-size: 1rem; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 12px 16px; text-align: left;
+    font-size: .73rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted);
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 13px 16px; font-size: .85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface); }
+  /* ── BADGES ── */
+  .badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: .73rem; font-weight: 600;
+  }
+  .badge.pending  { background: #f5c84222; color: var(--gold); }
+  .badge.review   { background: #5b8cff18; color: var(--blue); }
+  .badge.approved { background: var(--green-soft); color: var(--green); }
+  .badge.rejected { background: var(--red-soft); color: var(--red); }
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 9px 18px; border-radius: 8px; border: none;
+    font-size: .83rem; font-weight: 600; cursor: pointer; transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-gold { background: var(--gold); color: #111; }
+  .btn-gold:hover { background: #e6b830; }
+  .btn-outline {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-approve { background: var(--green-soft); color: var(--green); border: 1px solid var(--green); }
+  .btn-approve:hover { background: var(--green); color: #111; }
+  .btn-reject { background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
+  .btn-reject:hover { background: var(--red); color: #fff; }
+  .btn-sm { padding: 5px 12px; font-size: .77rem; }
+  /* ── FORMS ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+  input, select, textarea {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--text); font-size: .88rem; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border-color .2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+  select option { background: var(--surface); }
+  .form-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    margin-bottom: 20px;
+  }
+  .form-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 18px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  /* ── SCHOLARSHIP CARDS ── */
+  .scholarship-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 18px; }
+  .sc-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: all .25s; position: relative; overflow: hidden;
+  }
+  .sc-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--teal));
+  }
+  .sc-card:hover { transform: translateY(-4px); border-color: var(--gold); box-shadow: var(--shadow); }
+  .sc-card h3 { font-size: .95rem; font-weight: 600; margin-bottom: 4px; }
+  .sc-card .provider { font-size: .78rem; color: var(--teal); font-weight: 600; margin-bottom: 12px; }
+  .sc-amount { font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 10px; }
+  .sc-amount span { font-size: .78rem; color: var(--muted); font-weight: 400; }
+  .sc-meta { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .sc-meta-row { display: flex; gap: 6px; font-size: .78rem; color: var(--muted); }
+  .sc-meta-row strong { color: var(--text); }
+  /* ── STATUS CARDS ── */
+  .status-cards { display: flex; flex-direction: column; gap: 14px; }
+  .status-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 22px;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .status-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+  .status-icon.pending  { background: var(--gold-soft); }
+  .status-icon.review   { background: var(--blue-soft); }
+  .status-icon.approved { background: var(--green-soft); }
+  .status-icon.rejected { background: var(--red-soft); }
+  .status-info { flex: 1; }
+  .status-info h4 { font-size: .92rem; font-weight: 600; }
+  .status-info p  { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  /* ── LOGIN ── */
+  .login-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 24px;
+  }
+  .login-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 44px 40px; width: 100%; max-width: 420px;
+    box-shadow: var(--shadow);
+  }
+  .login-logo { text-align: center; margin-bottom: 30px; }
+  .login-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem; color: var(--gold);
+  }
+  .login-logo p { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .tab-switch {
+    display: flex; background: var(--surface); border-radius: 10px;
+    padding: 4px; margin-bottom: 24px;
+  }
+  .tab-switch button {
+    flex: 1; padding: 9px; border-radius: 8px; border: none;
+    background: transparent; color: var(--muted); font-weight: 600;
+    font-size: .85rem; cursor: pointer; transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab-switch button.active { background: var(--card); color: var(--gold); }
+  .login-btn {
+    width: 100%; padding: 12px; margin-top: 6px;
+    background: var(--gold); color: #111; border: none;
+    border-radius: 10px; font-size: .95rem; font-weight: 700;
+    cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif;
+  }
+  .login-btn:hover { background: #e6b830; transform: translateY(-1px); }
+  .login-note { text-align: center; margin-top: 14px; font-size: .78rem; color: var(--muted); }
+  .login-note a { color: var(--teal); cursor: pointer; text-decoration: none; }
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: #000a; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 30px; width: 100%; max-width: 500px;
+    box-shadow: var(--shadow); animation: fadeIn .3s;
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-header h3 { font-size: 1.1rem; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; }
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+    background: var(--card); border: 1px solid var(--green);
+    border-radius: 10px; padding: 14px 20px;
+    color: var(--green); font-weight: 600; font-size: .87rem;
+    box-shadow: var(--shadow); transform: translateY(80px); opacity: 0;
+    transition: all .35s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════ -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-box">
+  <div class="login-logo">
+    <h1>📚 ScholarTrack</h1>
+    <p id="authSubtitle">Scholarship Management System</p>
+  </div>
+  
+  <div class="tab-switch">
+    <button id="roleStudent" class="active" onclick="setAuthRole('student')">🎓 Student</button>
+    <button id="roleAdmin" onclick="setAuthRole('admin')">🛡 Admin</button>
+  </div>
+
+  <div class="tab-switch" id="modeSwitcher" style="margin-top: 10px; background: var(--card); border: 1px solid var(--border);">
+    <button id="tabLogin" class="active" onclick="toggleAuthMode('login')">Sign In</button>
+    <button id="tabRegister" onclick="toggleAuthMode('register')">New Student Register</button>
+  </div>
+
+  <div id="loginFields">
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Email Address</label>
+      <input type="email" id="loginEmail" placeholder="you@email.com"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In as <span id="btnRoleText">Student</span> →</button>
+  </div>
+
+  <div id="registerFields" style="display:none">
+    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group"><label>Full Name</label><input id="regName" /></div>
+        <div class="form-group"><label>Phone</label><input id="regPhone" /></div>
+        <div class="form-group"><label>Email</label><input id="regEmail" /></div>
+        <div class="form-group"><label>Course</label><input id="regCourse" /></div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="regCategory">
+            <option>General</option><option>OBC</option><option>SC</option><option>ST</option><option>EWS</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Year</label><input type="number" id="regYear" value="1"/></div>
+    </div>
+    <div class="form-group" style="margin-top:10px">
+      <label>Annual Income (₹)</label>
+      <input type="number" id="regIncome" />
+    </div>
+    <div class="form-group" style="margin-top:10px">
+      <label>Set Password</label>
+      <input type="password" id="regPass" />
+    </div>
+    <button class="login-btn" onclick="doRegister()">Create Student Account →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="appShell" class="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h1>📚 ScholarTrack</h1>
+      <p>Management System</p>
+    </div>
+    <!-- Student nav -->
+    <div id="studentNav">
+      <div class="sidebar-role">Student</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">🏠</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('scholarships')"><span class="icon">🎓</span> Scholarships</div>
+      <div class="nav-item" onclick="showPage('myApplications')"><span class="icon">📋</span> My Applications</div>
+      <div class="nav-item" onclick="showPage('uploadDocs')"><span class="icon">📎</span> Upload Documents</div>
+      <div class="nav-item" onclick="showPage('profile')"><span class="icon">👤</span> My Profile</div>
+    </div>
+    <!-- Admin nav -->
+    <div id="adminNav" style="display:none">
+      <div class="sidebar-role">Admin</div>
+      <div class="nav-item active" onclick="showPage('adminDash')"><span class="icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('manageScholarships')"><span class="icon">🎓</span> Scholarships</div>
+      <div class="nav-item" onclick="showPage('allApplications')"><span class="icon">📋</span> Applications</div>
+      <div class="nav-item" onclick="showPage('verifyDocs')"><span class="icon">✅</span> Verify Docs</div>
+      <div class="nav-item" onclick="showPage('students')"><span class="icon">👥</span> Students</div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="avatar" id="sidebarAvatar">A</div>
+        <div class="user-info">
+          <p id="sidebarName">User</p>
+          <span id="sidebarRole">Role</span>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ─ STUDENT: Dashboard ─ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h2>Welcome back, <span id="welcomeName">Student</span> 👋</h2>
+        <p>Here's a summary of your scholarship activity</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card gold"><div class="label">Applied</div><div class="value">3</div></div>
+        <div class="stat-card teal"><div class="label">Under Review</div><div class="value">1</div></div>
+        <div class="stat-card green"><div class="label">Approved</div><div class="value">1</div></div>
+        <div class="stat-card red"><div class="label">Rejected</div><div class="value">0</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>Recent Applications</h3></div>
+        <table>
+          <thead><tr><th>Scholarship</th><th>Provider</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Merit Excellence Award</td><td>Ministry of Education</td><td>₹25,000</td><td>2025-07-01</td><td><span class="badge pending">Pending</span></td></tr>
+            <tr><td>OBC Central Scholarship</td><td>Min. of Social Welfare</td><td>₹15,000</td><td>2025-07-05</td><td><span class="badge review">Under Review</span></td></tr>
+            <tr><td>National SC/ST Award</td><td>Govt of India</td><td>₹18,000</td><td>2025-06-20</td><td><span class="badge approved">Approved</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ STUDENT: Scholarships ─ -->
+    <div class="page" id="page-scholarships">
+      <div class="page-header">
+        <h2>Available Scholarships</h2>
+        <p>Browse and apply for scholarships you are eligible for</p>
+      </div>
+      <div class="scholarship-grid" id="scholarshipGrid"></div>
+    </div>
+
+    <!-- ─ STUDENT: My Applications ─ -->
+    <div class="page" id="page-myApplications">
+      <div class="page-header">
+        <h2>My Applications</h2>
+        <p>Track the status of all your applications</p>
+      </div>
+      <div class="status-cards">
+        <div class="status-card">
+          <div class="status-icon pending">⏳</div>
+          <div class="status-info"><h4>Merit Excellence Award</h4><p>Applied on 01 Jul 2025 · Ministry of Education · ₹25,000</p></div>
+          <span class="badge pending">Pending</span>
+        </div>
+        <div class="status-card">
+          <div class="status-icon review">🔍</div>
+          <div class="status-info"><h4>OBC Central Scholarship</h4><p>Applied on 05 Jul 2025 · Min. of Social Welfare · ₹15,000</p></div>
+          <span class="badge review">Under Review</span>
+        </div>
+        <div class="status-card">
+          <div class="status-icon approved">✅</div>
+          <div class="status-info"><h4>National SC/ST Award</h4><p>Applied on 20 Jun 2025 · Govt of India · ₹18,000 · Documents verified</p></div>
+          <span class="badge approved">Approved</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─ STUDENT: Upload Documents ─ -->
+    <div class="page" id="page-uploadDocs">
+      <div class="page-header">
+        <h2>Upload Documents</h2>
+        <p>Attach required documents to your applications</p>
+      </div>
+      <div class="form-card">
+        <h3>📎 Submit a Document</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Select Application</label>
+            <select>
+              <option>Merit Excellence Award</option>
+              <option>OBC Central Scholarship</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Document Type</label>
+            <select>
+              <option>Income Certificate</option>
+              <option>Caste Certificate</option>
+              <option>Marksheet</option>
+              <option>Aadhaar Card</option>
+              <option>Bank Passbook</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Upload File (PDF / JPG / PNG)</label>
+            <input type="file" accept=".pdf,.jpg,.png"/>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-gold" onclick="showToast('Document uploaded successfully!')">Upload Document</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>Uploaded Documents</h3></div>
+        <table>
+          <thead><tr><th>Document</th><th>Application</th><th>Uploaded</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>income_cert.pdf</td><td>Merit Excellence Award</td><td>2025-07-01</td><td><span class="badge approved">Verified</span></td></tr>
+            <tr><td>marksheet.pdf</td><td>OBC Central Scholarship</td><td>2025-07-05</td><td><span class="badge pending">Pending</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ STUDENT: Profile ─ -->
+    <div class="page" id="page-profile">
+      <div class="page-header"><h2>My Profile</h2><p>Update your personal information</p></div>
+      <div class="form-card">
+        <h3>👤 Personal Details</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name</label><input value="Aarav Sharma"/></div>
+          <div class="form-group"><label>Email</label><input value="aarav@email.com"/></div>
+          <div class="form-group"><label>Phone</label><input value="9876543210"/></div>
+          <div class="form-group"><label>Course</label><input value="B.Tech CSE"/></div>
+          <div class="form-group"><label>Year</label><select><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+          <div class="form-group"><label>Category</label><select><option selected>General</option><option>OBC</option><option>SC</option><option>ST</option><option>EWS</option></select></div>
+          <div class="form-group full"><label>Annual Family Income (₹)</label><input value="180000"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-gold" onclick="showToast('Profile updated!')">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─ ADMIN: Dashboard ─ -->
+    <div class="page" id="page-adminDash">
+      <div class="page-header"><h2>Admin Dashboard</h2><p>Overview of the scholarship system</p></div>
+      <div class="stats-grid">
+        <div class="stat-card gold"><div class="label">Total Applications</div><div class="value">48</div></div>
+        <div class="stat-card teal"><div class="label">Pending</div><div class="value">21</div></div>
+        <div class="stat-card green"><div class="label">Approved</div><div class="value">19</div></div>
+        <div class="stat-card red"><div class="label">Rejected</div><div class="value">8</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card teal"><div class="label">Total Students</div><div class="value">36</div></div>
+        <div class="stat-card gold"><div class="label">Active Scholarships</div><div class="value">5</div></div>
+        <div class="stat-card green"><div class="label">Docs Verified</div><div class="value">31</div></div>
+        <div class="stat-card red"><div class="label">Docs Pending</div><div class="value">12</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>Recent Applications</h3></div>
+        <table>
+          <thead><tr><th>Student</th><th>Scholarship</th><th>Applied</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Aarav Sharma</td><td>Merit Excellence Award</td><td>2025-07-01</td><td><span class="badge pending">Pending</span></td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Application Approved! ✅')">Approve</button> <button class="btn btn-reject btn-sm" onclick="showToast('Application Rejected','error')">Reject</button></td></tr>
+            <tr><td>Priya Verma</td><td>OBC Central Scholarship</td><td>2025-07-05</td><td><span class="badge review">Under Review</span></td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Application Approved! ✅')">Approve</button> <button class="btn btn-reject btn-sm" onclick="showToast('Application Rejected','error')">Reject</button></td></tr>
+            <tr><td>Rahul Kumar</td><td>National SC/ST Award</td><td>2025-06-20</td><td><span class="badge approved">Approved</span></td>
+              <td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ ADMIN: Manage Scholarships ─ -->
+    <div class="page" id="page-manageScholarships">
+      <div class="page-header"><h2>Manage Scholarships</h2><p>Add, edit, or remove scholarship schemes</p></div>
+      <div class="form-card">
+        <h3>➕ Add New Scholarship</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Scholarship Name</label><input placeholder="e.g. Merit Excellence Award"/></div>
+          <div class="form-group"><label>Provider / Authority</label><input placeholder="e.g. Ministry of Education"/></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" placeholder="25000"/></div>
+          <div class="form-group"><label>Last Date</label><input type="date"/></div>
+          <div class="form-group full"><label>Eligibility Criteria</label><textarea rows="2" placeholder="e.g. Above 80% marks, income below 2.5 LPA"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Reset</button>
+          <button class="btn btn-gold" onclick="showToast('Scholarship added successfully!')">Add Scholarship</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>All Scholarships</h3></div>
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Provider</th><th>Amount</th><th>Last Date</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Merit Excellence Award</td><td>Ministry of Education</td><td>₹25,000</td><td>2025-08-31</td><td><button class="btn btn-reject btn-sm" onclick="showToast('Deleted','error')">Delete</button></td></tr>
+            <tr><td>2</td><td>National SC/ST Scholarship</td><td>Govt of India</td><td>₹18,000</td><td>2025-09-15</td><td><button class="btn btn-reject btn-sm" onclick="showToast('Deleted','error')">Delete</button></td></tr>
+            <tr><td>3</td><td>OBC Central Scholarship</td><td>Min. Social Welfare</td><td>₹15,000</td><td>2025-09-30</td><td><button class="btn btn-reject btn-sm" onclick="showToast('Deleted','error')">Delete</button></td></tr>
+            <tr><td>4</td><td>EWS Higher Education Fund</td><td>State Government</td><td>₹20,000</td><td>2025-10-01</td><td><button class="btn btn-reject btn-sm" onclick="showToast('Deleted','error')">Delete</button></td></tr>
+            <tr><td>5</td><td>Girls STEM Scholarship</td><td>Women & Child Dept.</td><td>₹12,000</td><td>2025-09-20</td><td><button class="btn btn-reject btn-sm" onclick="showToast('Deleted','error')">Delete</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ ADMIN: All Applications ─ -->
+    <div class="page" id="page-allApplications">
+      <div class="page-header"><h2>All Applications</h2><p>Review and update application statuses</p></div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>Applications</h3><input placeholder="🔍 Search student..." style="padding:7px 12px;font-size:.83rem;width:200px"/></div>
+        <table>
+          <thead><tr><th>#</th><th>Student</th><th>Category</th><th>Scholarship</th><th>Amount</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Aarav Sharma</td><td>General</td><td>Merit Excellence</td><td>₹25,000</td><td>2025-07-01</td><td><span class="badge pending">Pending</span></td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Approved ✅')">✓</button> <button class="btn btn-reject btn-sm" onclick="showToast('Rejected','error')">✗</button></td></tr>
+            <tr><td>2</td><td>Priya Verma</td><td>OBC</td><td>OBC Central</td><td>₹15,000</td><td>2025-07-05</td><td><span class="badge review">Under Review</span></td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Approved ✅')">✓</button> <button class="btn btn-reject btn-sm" onclick="showToast('Rejected','error')">✗</button></td></tr>
+            <tr><td>3</td><td>Rahul Kumar</td><td>SC</td><td>National SC/ST</td><td>₹18,000</td><td>2025-06-20</td><td><span class="badge approved">Approved</span></td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ ADMIN: Verify Documents ─ -->
+    <div class="page" id="page-verifyDocs">
+      <div class="page-header"><h2>Verify Documents</h2><p>Review and verify student-uploaded documents</p></div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>Pending Documents</h3></div>
+        <table>
+          <thead><tr><th>Student</th><th>Application</th><th>Document</th><th>Uploaded</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Aarav Sharma</td><td>Merit Excellence Award</td><td>income_cert.pdf</td><td>2025-07-01</td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Document Verified ✅')">Verify</button> <button class="btn btn-reject btn-sm" onclick="showToast('Document Rejected','error')">Reject</button></td></tr>
+            <tr><td>Priya Verma</td><td>OBC Central Scholarship</td><td>caste_cert.pdf</td><td>2025-07-05</td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Document Verified ✅')">Verify</button> <button class="btn btn-reject btn-sm" onclick="showToast('Document Rejected','error')">Reject</button></td></tr>
+            <tr><td>Priya Verma</td><td>OBC Central Scholarship</td><td>marksheet.pdf</td><td>2025-07-06</td>
+              <td><button class="btn btn-approve btn-sm" onclick="showToast('Document Verified ✅')">Verify</button> <button class="btn btn-reject btn-sm" onclick="showToast('Document Rejected','error')">Reject</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─ ADMIN: Students ─ -->
+    <div class="page" id="page-students">
+      <div class="page-header"><h2>Registered Students</h2><p>View all student profiles</p></div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>All Students</h3></div>
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Course</th><th>Year</th><th>Category</th><th>Income</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Aarav Sharma</td><td>aarav@email.com</td><td>B.Tech CSE</td><td>2nd</td><td>General</td><td>₹1,80,000</td></tr>
+            <tr><td>2</td><td>Priya Verma</td><td>priya@email.com</td><td>B.Sc Physics</td><td>1st</td><td>OBC</td><td>₹1,20,000</td></tr>
+            <tr><td>3</td><td>Rahul Kumar</td><td>rahul@email.com</td><td>B.Com</td><td>3rd</td><td>SC</td><td>₹95,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── APPLY MODAL ── -->
+<div class="modal-overlay" id="applyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Apply for Scholarship</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:18px">You are applying for: <strong id="modalSchName" style="color:var(--gold)"></strong></p>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Any additional note (optional)</label>
+      <textarea rows="3" placeholder="e.g. I have maintained above 85% throughout..."></textarea>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:14px">⚠ Make sure to upload your documents after applying.</p>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="submitApplication()">Submit Application</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+const users = {
+  'aarav@email.com':          { pass: 'student123', role: 'student', name: 'Aarav Sharma' },
+  'priya@email.com':          { pass: 'student123', role: 'student', name: 'Priya Verma'  },
+  'rahul@email.com':          { pass: 'student123', role: 'student', name: 'Rahul Kumar'  },
+  'admin@scholarship.com':    { pass: 'admin123',   role: 'admin',   name: 'Admin User'   }
+};
+
+const scholarships = [
+  { id:1, name:'Merit Excellence Award',    provider:'Ministry of Education',    amount:25000, eligibility:'Above 80% marks, Annual income below 2.5 LPA', last_date:'31 Aug 2025' },
+  { id:2, name:'National SC/ST Scholarship',provider:'Govt of India',            amount:18000, eligibility:'SC/ST category, income below 2 LPA',          last_date:'15 Sep 2025' },
+  { id:3, name:'OBC Central Scholarship',   provider:'Min. of Social Welfare',   amount:15000, eligibility:'OBC category, income below 1.5 LPA',           last_date:'30 Sep 2025' },
+  { id:4, name:'EWS Higher Education Fund', provider:'State Government',          amount:20000, eligibility:'EWS category, enrolled in UG/PG course',       last_date:'01 Oct 2025' },
+  { id:5, name:'Girls STEM Scholarship',    provider:'Women & Child Department',  amount:12000, eligibility:'Female students in Science/Tech/Eng/Math',      last_date:'20 Sep 2025' },
+];
+
+let currentUser = null, loginRole = 'student';
+
+// ── LOGIN ──
+function setLoginRole(role) {
+  loginRole = role;
+  document.querySelectorAll('.tab-switch button').forEach((b,i) => b.classList.toggle('active', (i===0&&role==='student')||(i===1&&role==='admin')));
+  document.getElementById('loginEmail').value = role==='admin' ? 'admin@scholarship.com' : 'aarav@email.com';
+  document.getElementById('loginPass').value  = role==='admin' ? 'admin123' : 'student123';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value.trim();
+
+  try {
+    // Making the API call to the backend
+    const res = await fetch('http://localhost:3000/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password: pass })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // 'data.user' contains the student record from the database
+      currentUser = { email: data.user.email, name: data.user.name, role: 'student' };
+      
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appShell').style.display    = 'flex';
+      
+      // Hydrating the UI with DB data
+      document.getElementById('sidebarName').textContent   = data.user.name;
+      document.getElementById('sidebarRole').textContent   = 'Student';
+      document.getElementById('sidebarAvatar').textContent = data.user.name[0];
+      document.getElementById('welcomeName').textContent   = data.user.name.split(' ')[0];
+      
+      document.getElementById('studentNav').style.display  = '';
+      document.getElementById('adminNav').style.display    = 'none';
+      
+      showPage('dashboard');
+      
+      // Fetch dynamic scholarships
+      buildScholarships();
+    } else {
+      showToast('Invalid email or password', 'error');
+    }
+  } catch (error) {
+    console.error(error);
+    showToast('Cannot connect to the server!', 'error');
+  }
+}
+function doLogout() {
+  currentUser = null;
+  document.getElementById('appShell').style.display    = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ── NAVIGATION ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event && event.currentTarget && event.currentTarget.classList && event.currentTarget.classList.add('active');
+}
+
+// ── BUILD SCHOLARSHIP CARDS ──
+async function buildScholarships() {
+  const grid = document.getElementById('scholarshipGrid');
+  
+  try {
+    const res = await fetch('http://localhost:3000/scholarships');
+    const scholarshipsFromDB = await res.json();
+
+    if (scholarshipsFromDB.length === 0) {
+      grid.innerHTML = `<div class="empty">No scholarships available right now.</div>`;
+      return;
+    }
+
+    grid.innerHTML = scholarshipsFromDB.map(s => `
+      <div class="sc-card">
+        <h3>${s.scholarship_name}</h3>
+        <div class="provider">${s.provider}</div>
+        <div class="sc-amount">₹${parseFloat(s.amount).toLocaleString()} <span>/ year</span></div>
+        <div class="sc-meta">
+          <div class="sc-meta-row">📋 <span><strong>Eligibility:</strong> ${s.eligibility}</span></div>
+          <div class="sc-meta-row">📅 <span><strong>Last Date:</strong> ${new Date(s.last_date).toDateString()}</span></div>
+        </div>
+        <button class="btn btn-gold" style="width:100%" onclick="openApplyModal('${s.scholarship_name}')">Apply Now →</button>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error(error);
+    grid.innerHTML = `<div class="empty" style="color:var(--red)">Failed to load scholarships.</div>`;
+  }
+}
+
+// ── MODAL ──
+function openApplyModal(name) {
+  document.getElementById('modalSchName').textContent = name;
+  document.getElementById('applyModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('applyModal').classList.remove('open');
+}
+function submitApplication() {
+  closeModal();
+  showToast('Application submitted successfully! 🎉');
+}
+
+// ── TOAST ──
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type==='error' ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ──
+setLoginRole('student');
+function toggleAuthMode(mode) {
+  const isLogin = mode === 'login';
+  document.getElementById('loginFields').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('registerFields').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+  document.getElementById('authSubtitle').textContent = isLogin ? 'Welcome Back' : 'Join ScholarTrack';
+}
+
+async function doRegister() {
+  const payload = {
+    name: document.getElementById('regName').value,
+    email: document.getElementById('regEmail').value,
+    phone: document.getElementById('regPhone').value,
+    course: document.getElementById('regCourse').value,
+    year: document.getElementById('regYear').value,
+    category: document.getElementById('regCategory').value,
+    income: document.getElementById('regIncome').value,
+    password: document.getElementById('regPass').value
+  };
+
+  const response = await fetch('http://localhost:5000/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (data.success) {
+    showToast('Registration successful! Please login.');
+    toggleAuthMode('login');
+  } else {
+    showToast(data.message || 'Registration failed', 'error');
+  }
+}
+let currentRole = 'student'; // Tracks if user is logging in as Student or Admin
+let currentMode = 'login';   // Tracks if user is on Login or Register screen
+
+function setAuthRole(role) {
+  currentRole = role;
+  
+  // Update UI Colors
+  document.getElementById('roleStudent').classList.toggle('active', role === 'student');
+  document.getElementById('roleAdmin').classList.toggle('active', role === 'admin');
+  document.getElementById('btnRoleText').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+
+  if (role === 'admin') {
+    
+    toggleAuthMode('login');
+    document.getElementById('modeSwitcher').style.display = 'none';
+  } else {
+    
+    document.getElementById('modeSwitcher').style.display = 'flex';
+  }
+}
+
+function toggleAuthMode(mode) {
+  currentMode = mode;
+  const isLogin = mode === 'login';
+  
+  document.getElementById('loginFields').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('registerFields').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+  
+  document.getElementById('authSubtitle').textContent = isLogin ? 'Scholarship Management System' : 'Student Registration';
+}
+</script>
+</body>
+</html>
